@@ -1,7 +1,5 @@
 /* globals __DEV__ */
 import Phaser from 'phaser'
-import Mushroom from '../sprites/Mushroom'
-import lang from '../lang';
 import Node from './Node';
 import Rect from './Rect';
 
@@ -13,6 +11,7 @@ export default class extends Phaser.State {
     return array.sort(() => Math.random() - 0.5);
   }
 
+  //Sorting and displaying algorithm
   iteration() {
     const asset = this.images.pop();
     if (asset) {
@@ -46,6 +45,7 @@ export default class extends Phaser.State {
   }
 
   create() {
+    //Populate with random image and shuffle it
     const imagesPath = ['50', '100', '150', '200'];
     const images = this.images = [];
     for (let i = 0; i < 60; i++) {
@@ -62,6 +62,7 @@ export default class extends Phaser.State {
     };
     this.images = this.shuffle(images);
 
+    //Define the size of area
     const width = this.game.width;
     const height = this.game.height;
     this.total_area = width * height;

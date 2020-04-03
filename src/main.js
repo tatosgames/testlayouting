@@ -4,7 +4,6 @@ import Phaser from 'phaser'
 
 import BootState from './states/Boot'
 import GameState from './states/Game'
-import Game2State from './states/Game2'
 
 import config from './config'
 
@@ -18,7 +17,6 @@ class Game extends Phaser.Game {
 
     this.state.add('Boot', BootState, false)
     this.state.add('Game', GameState, false)
-    this.state.add('Game2', GameState, false)
 
     // with Cordova with need to wait that the device is ready so we will call the Boot state in another file
     if (!window.cordova) {

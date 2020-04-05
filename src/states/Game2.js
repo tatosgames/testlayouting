@@ -80,6 +80,14 @@ export default class extends Phaser.State {
     };
     this.images.push(auxArray);
 
+    this.placeholders = [];
+    for (let i = 0; i < 300; i++) {
+      const img = this.game.add.sprite(0, 0, '50');
+      img.visible = false;
+      img.alpha = 0.2;
+      this.placeholders.push(img);
+    };
+
     // Define the size of area
     const width = this.game.width;
     const height = this.game.height;
@@ -90,7 +98,6 @@ export default class extends Phaser.State {
     this.cellWidth = this.images[0][0].width;
     this.cellHeight = this.images[0][0].height;
 
-    console.log
     this.grid = new Array(rows); // [rows][cols];
     for (let rowIndex = 0; rowIndex < this.grid.length; rowIndex++) {
       this.grid[rowIndex] = new Array(cols);
@@ -134,29 +141,49 @@ export default class extends Phaser.State {
     const heightRows = Math.round(image.height / this.cellHeight);
 
     for (let rowIndex = 0; rowIndex < heightRows; rowIndex++) {
-      if (result.row + rowIndex < this.grid.length) {
+      if (result.row + rowIndex < this.grid.length && result.row + rowIndex >= 0) {
         const row = this.grid[result.row + rowIndex];
         for (let colIndex = 0; colIndex < widthCols; colIndex++) {
-          if (result.col + colIndex < row.length) {
+          if (result.col + colIndex < row.length && result.col + colIndex >= 0) {
             const element = row[result.col + colIndex];
             element.empty = false;
             element.size = sizeIndex;
 
             if (rowIndex === 0 && result.row + rowIndex > 0) {
               const toQueue = this.grid[result.row + rowIndex - 1][result.col + colIndex];
-              if (toQueue.empty && this.cellsQueue.indexOf(toQueue) === -1) this.cellsQueue.push(toQueue);
+              if (toQueue.empty && this.cellsQueue.indexOf(toQueue) === -1) {
+                this.cellsQueue.push(toQueue);
+                // const img = this.placeholders.pop();
+                // img.visible = true;
+                // img.position.set((result.col + colIndex) * this.cellWidth, (result.row + rowIndex - 1) * this.cellHeight);
+              }
             }
             if (rowIndex === heightRows - 1 && result.row + rowIndex < this.grid.length - 1) {
               const toQueue = this.grid[result.row + rowIndex + 1][result.col + colIndex];
-              if (toQueue.empty && this.cellsQueue.indexOf(toQueue) === -1) this.cellsQueue.push(toQueue);
+              if (toQueue.empty && this.cellsQueue.indexOf(toQueue) === -1) {
+                this.cellsQueue.push(toQueue);
+                // const img = this.placeholders.pop();
+                // img.visible = true;
+                // img.position.set((result.col + colIndex) * this.cellWidth, (result.row + rowIndex + 1) * this.cellHeight);
+              }
             }
             if (colIndex === 0 && result.col + colIndex > 0) {
               const toQueue = row[result.col + colIndex - 1];
-              if (toQueue.empty && this.cellsQueue.indexOf(toQueue) === -1) this.cellsQueue.push(toQueue);
+              if (toQueue.empty && this.cellsQueue.indexOf(toQueue) === -1) {
+                this.cellsQueue.push(toQueue);
+                // const img = this.placeholders.pop();
+                // img.visible = true;
+                // img.position.set((result.col + colIndex - 1) * this.cellWidth, (result.row + rowIndex) * this.cellHeight);
+              }
             }
             if (colIndex === widthCols - 1 && result.col + colIndex < row.length - 1) {
               const toQueue = row[result.col + colIndex + 1];
-              if (toQueue.empty && this.cellsQueue.indexOf(toQueue) === -1) this.cellsQueue.push(toQueue);
+              if (toQueue.empty && this.cellsQueue.indexOf(toQueue) === -1) {
+                this.cellsQueue.push(toQueue);
+                // const img = this.placeholders.pop();
+                // img.visible = true;
+                // img.position.set((result.col + colIndex + 1) * this.cellWidth, (result.row + rowIndex) * this.cellHeight);
+              }
             }
           }
         }
@@ -165,14 +192,73 @@ export default class extends Phaser.State {
   }
 
   processQueue () {
-    console.log(this.cellsQueue)
-    const element = this.cellsQueue.shift();
-    const biggestSize = this.findBiggestNeighbourSize(element.indexes.row, element.indexes.col);
+    // console.log(this.cellsQueue)
+    const cell = this.cellsQueue.shift();
+    const biggestSize = this.findBiggestNeighbourSize(cell.indexes.row, cell.indexes.col);
     let maxPossibleSize = 0;
     if (biggestSize !== this.images.length - 1) maxPossibleSize = this.images.length - 1;
     else maxPossibleSize = biggestSize - 1;
     
-    const newSize = this.game.rnd.integerInRange(0, Math.max(0, biggestSize - 1));
+    const newSize = this.game.rnd.integerInRange(0, Math.max(0, maxPossibleSize));
+    console.warn(newSize);
+    const currentImage = this.images[newSize].pop();
+    if (currentImage) {
+      const result = this.tryToPositionImage(currentImage, newSize, cell);
+      console.log(result);
+      if (result !== null) {
+        this.setUsedSpace(currentImage, newSize, result)
+      } else if (cell.empty) {
+        this.cellsQueue.push(cell);
+      }
+    } else if (cell.empty) {
+      this.cellsQueue.push(cell);
+    }
+    if (this.cellsQueue.length > 0) {
+      this.game.time.events.add(10, () => {
+        this.processQueue();
+      }, this);
+    }
+  }
+
+  tryToPositionImage (currentImage, size, cellToFill) {
+    const { grid } = this;
+    let empty = true;
+    // for (let rowIndex = 0; rowIndex <= size; rowIndex++) {
+    //   for (let colIndex = 0; colIndex <= size; colIndex++) {
+    //     if (empty) empty = grid[rowIndex][colIndex];
+        
+    //   }
+    // }
+    const widthCols = Math.round(currentImage.width / this.cellWidth);
+    const heightRows = Math.round(currentImage.height / this.cellHeight);
+
+    for (let imageRowIndex = 0; imageRowIndex < heightRows; imageRowIndex++) {
+      for (let imageColIndex = 0; imageColIndex < heightRows; imageColIndex++) {
+        for (let rowIndex = 0; rowIndex < heightRows; rowIndex++) {
+          const rowIndexToCheck = cellToFill.indexes.row + rowIndex - imageRowIndex;
+          if (rowIndexToCheck < this.grid.length && rowIndexToCheck >= 0) {
+            const row = this.grid[cellToFill.indexes.row + rowIndex - imageRowIndex];
+            for (let colIndex = 0; colIndex < widthCols; colIndex++) {
+              const colIndexTocheck = cellToFill.indexes.col + colIndex - imageColIndex;
+              if (colIndexTocheck < row.length && colIndexTocheck >= 0) {
+                const element = row[cellToFill.indexes.col + colIndex - imageColIndex];
+                if (empty) empty = element.empty;
+              }
+            }
+          }
+        }
+        if (empty) {
+          // can be placed
+          const rowI = cellToFill.indexes.row - imageRowIndex;
+          const colI = cellToFill.indexes.col - imageColIndex;
+          currentImage.position.set(colI * this.cellWidth, rowI * this.cellHeight);
+          currentImage.visible = true;
+          return { row: rowI, col: colI };
+        }
+        empty = true;
+      }
+    }
+    return null;
   }
 
   findBiggestNeighbourSize (row, col) {
